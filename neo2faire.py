@@ -24,7 +24,7 @@ def parse_args():
                         required = False,
                         default = './assets/FAIRe_checklist_v1.0.2_FULLtemplate.xlsx')
     parser.add_argument('-d', '--dataset',
-                        default = '1001',
+                        default = '55582',
                         type = int,
                         help = 'The Neotoma dataset for which FAIRe data is to be generated.')
     parser.add_argument('-v', '--version',
