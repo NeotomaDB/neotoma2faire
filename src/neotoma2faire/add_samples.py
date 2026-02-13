@@ -2,6 +2,7 @@ from datetime import datetime
 from .neo_connect import neo_connect
 
 def add_samples(workbook, datasetid):
+    print(datasetid)
     ws = workbook.active = workbook['sampleMetadata']
     conn = neo_connect()
 
@@ -25,8 +26,8 @@ def add_samples(workbook, datasetid):
             cu.colldate AS event_date,
             cu.colldevice AS samp_collect_device,
             st.altitude AS elev,
-            au.depth AS minimumDepthInMeters,
-            au.depth AS maximumDepthInMeters,
+            au.depth AS "minimumDepthInMeters",
+            au.depth AS "maximumDepthInMeters",
             lp.value AS tot_depth_water_col
         FROM ndb.datasets AS ds
             INNER JOIN ndb.samples AS smp ON smp.datasetid = ds.datasetid
@@ -37,22 +38,26 @@ def add_samples(workbook, datasetid):
             INNER JOIN ndb.geopoliticalunits AS gpu ON gpu.geopoliticalid = sgp.geopoliticalid
             LEFT JOIN ndb.lakeparameters AS lp ON (lp.siteid = st.siteid AND lp.lakeparameterid = 1)
         WHERE ds.datasetid = %(datasetid)s
-        GROUP BY ds.datasetid, smp.sampleid, au.analysisunitid, cu.colldate, cu.colldevice, st.altitude, lp.value;
+        GROUP BY ds.datasetid, smp.sampleid, au.analysisunitid, cu.colldate, cu.colldevice, st.altitude, lp.value
+        ORDER BY "minimumDepthInMeters" ASC;
     """
     
     with conn.cursor() as cur:
         _ = cur.execute(samples, {'datasetid': datasetid})
         result = cur.fetchall()
 
+    row_start = 4
+
     for i in result:
         for k in i.keys():
             for j in range(len(celltodict)):
                 if celltodict[j]['samp_name'] == k:
-                    celltodict[j]['value'] = i[k]
-                    print(i[k])
-                    print(celltodict[j])
+                    celltodict[j]['value'] = i[k] or 'emptyvalue'
                     if isinstance(i[k], list):
-                        value = '; '.join([s for s in i[k] if s is not None])
+                        value = '; '.join([s for s in celltodict[j]['value'] if s is not None])
                     else:
-                        value = i[k] or 'AHAHA'
-                        ws.cell(j,4, value = value)
+                        value = celltodict[j]['value']
+                        ws.cell(row_start,j+1, value = value)
+        row_start = row_start + 1
+    
+    return workbook

@@ -46,7 +46,7 @@ else:
     # For testing in the Python environment:
     class args:
         tool = 'template'
-        dataset = 1
+        dataset = 55582
         output = 'template.xlsx'
         template = './assets/FAIRe_checklist_v1.0.2_FULLtemplate.xlsx'
 
