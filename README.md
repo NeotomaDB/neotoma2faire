@@ -4,6 +4,23 @@ This script is intended to support the generation of FAIRe files from the Neotom
 
 The goal is to produce a script that will allow a user to submit a datasetid and recieve back a FAIRe formatted spreadsheet with all the appropriate fields filled in.
 
+## Using this repository
+
+The script uses Python and the `uv` project management tool. With `uv` already installed, first, `sync` the project, to install all the necessary packages. Once the project is `sync`ed, then the project can be run:
+
+```bash
+uv run neo2faire.py [tool] -h -o <OUTPUT_FILE> -t <TEMPLATE_FILE> -d <DATASETID>
+```
+
+### Tools
+
+* `template`: Currently the only tool implemented. The `template` tool will take a dataset ID and return the FAIRe template for that file.
+
+### Flags
+
+* `-h`, `--help`: Get help for the commandline operation.
+* `-o`, `--output`: Define the output file to be used. 
+
 ## Contributors
 
 This project is an open project, and contributions are welcome from any individual.  All contributors to this project are bound by a [code of conduct](CODE_OF_CONDUCT.md).  Please review and follow this code of conduct as part of your contribution.
