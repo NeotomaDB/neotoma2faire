@@ -4,14 +4,14 @@ from json import loads
 from psycopg.rows import dict_row
 
 
-def neo_connect(tank: bool = True) -> psycopg.connect:
+def neo_connect(tank: bool = True) -> psycopg.Connection:
     """_Connect to the Neotoma Database_
 
     Args:
         tank (bool): _Are we connecting to the Neotoma Holding Tank or the Production database?_
 
     Returns:
-        psycopg2.connect: _A valid connection the the Neotoma Database server_
+        psycopg.Connection: _A valid connection to the Neotoma Database server_
     """
     secrets = dotenv_values()
     if tank:

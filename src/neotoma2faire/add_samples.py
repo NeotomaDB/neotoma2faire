@@ -1,8 +1,8 @@
 from datetime import datetime
 from .neo_connect import neo_connect
+from .utils import apply_query_result
 
 def add_samples(workbook, datasetid):
-    print(datasetid)
     ws = workbook.active = workbook['sampleMetadata']
     conn = neo_connect()
 
@@ -23,7 +23,7 @@ def add_samples(workbook, datasetid):
             distinct smp.samplename AS samp_name,
             'sample' AS samp_category,
             string_agg(distinct gpu.geopoliticalname, '; ') AS geo_loc_name,
-            cu.colldate AS event_date,
+            cu.colldate AS eventDate,
             cu.colldevice AS samp_collect_device,
             st.altitude AS elev,
             au.depth AS "minimumDepthInMeters",
@@ -46,18 +46,14 @@ def add_samples(workbook, datasetid):
         _ = cur.execute(samples, {'datasetid': datasetid})
         result = cur.fetchall()
 
-    row_start = 4
+    # Mapping from field name -> column index (1-based)
+    field_to_col = {celltodict[j]['samp_name']: j + 1
+                    for j in range(len(celltodict)) if celltodict[j].get('samp_name')}
 
-    for i in result:
-        for k in i.keys():
-            for j in range(len(celltodict)):
-                if celltodict[j]['samp_name'] == k:
-                    celltodict[j]['value'] = i[k] or 'emptyvalue'
-                    if isinstance(i[k], list):
-                        value = '; '.join([s for s in celltodict[j]['value'] if s is not None])
-                    else:
-                        value = celltodict[j]['value']
-                        ws.cell(row_start,j+1, value = value)
-        row_start = row_start + 1
+    row_offset = 4
+    def write_sample(row_idx, col, value):
+        ws.cell(row_idx + row_offset, col, value=value)
+
+    apply_query_result(result, field_to_col, write_sample, none_placeholder='emptyvalue')
     
     return workbook
