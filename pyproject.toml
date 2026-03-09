@@ -1,9 +1,10 @@
 [project]
 name = "neotoma2faire"
 version = "0.1.0"
-description = "Add your description here"
+description = "Convert sites from the Neotoma DataBase to the faire format"
 readme = "README.md"
 authors = [
+    { name = "Socorro Dominguez Vidana", email = "dominguezvid@wisc.edu" },
     { name = "Simon", email = "simon.j.goring@gmail.com" }
 ]
 requires-python = ">=3.12"
@@ -11,16 +12,78 @@ dependencies = [
     "openpyxl>=3.1.5",
     "psycopg[binary]>=3.3.2",
     "python-dotenv>=1.2.1",
+    "pytz>=2023.3",
+    "PyYAML>=6.0.1",
+    "tqdm>=4.65.0",
 ]
 
+[project.urls]
+Issues = "https://github.com/NeotomaDB/neotoma2faire/issues"
+Repository = "https://github.com/NeotomaDB/neotoma2faire.git"
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "bumpver",
+    "mypy",
+    "pytest",
+    "pytest-cov",
+]
+docs = [
+    "mkdocs>=1.6.1",
+    "mkdocs-material>=9.6.16",
+    "mkdocstrings[python-legacy]>=0.18",
+]
+
+[tool.ruff]
+# Target Python 3.12
+target-version = "py312"
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+# Enable common rule sets
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort (import sorting)
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults
+    "C901",   # too complex
+    "ARG001", # unused function argument (common in validators)
+    "ARG002", # unused method argument
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests can use assertions and have unused imports for fixtures
+"**/tests/*" = ["S101", "ARG", "F401"]
+# __init__.py files often have unused imports for re-export
+"__init__.py" = ["F401"]
+
+[tool.ruff.format]
+# Use double quotes for strings
+quote-style = "double"
+# Indent with spaces
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+pythonpath = ["src"]
+
 [project.scripts]
-neotoma2faire = "neotoma2faire:main"
+neotoma2faire = "neotoma2faire.cli:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
-
-[dependency-groups]
-dev = [
-    "pytest>=9.0.2",
-]
