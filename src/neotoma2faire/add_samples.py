@@ -1,9 +1,9 @@
 import pandas as pd
 from .get_samples import get_samples
 
-def add_samples(wb, dsid, header_row=3):
-    print(f"Adding sample data for datasetid {dsid} to workbook...")
-    df = get_samples(dsid)
+def add_samples(wb, df, header_row=3):
+    
+    df = get_samples(df)
     return df
     # ws = wb['sampleMetadata']
     

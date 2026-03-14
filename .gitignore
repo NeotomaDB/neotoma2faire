@@ -22,6 +22,8 @@ uv.lock
 
 # Data files
 data/*
+dataBUSdata/*
+*.csv
 
 # Eventually Add:
 .github/workflows/release.yml
