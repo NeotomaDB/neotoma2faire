@@ -1,24 +1,36 @@
-import rpy2.robjects as ro
+"""Fetch and assemble a Neotoma dataset into a single flat DataFrame.
+
+The public entry point is :func:`get_data`, which calls the ``neotoma2`` R
+package via rpy2 to retrieve site, collection-unit, dataset, sample, lake-
+parameter, and geopolitical-unit records, then merges them into one tidy
+DataFrame ready for downstream processing.
+"""
+
 from rpy2.robjects.packages import importr
-from rpy2.robjects import pandas2ri
 import pandas as pd
 import numpy as np
+
+from .utils import _r_to_df, _r_subset
 
 neo2 = importr('neotoma2')
 
 
-def _r_to_df(r_obj):
-    """Convert an R object to a pandas DataFrame."""
-    df = ro.r('function(x) as.data.frame(x)')(r_obj)
-    return pandas2ri.rpy2py(df)
-
-
-def _r_subset(r_obj, condition):
-    """Subset an R object using an R expression string."""
-    return ro.r(f'function(x) subset(x, {condition})')(r_obj)
-
-
 def get_data(dsid):
+    """Download a Neotoma dataset and return a merged, cleaned DataFrame.
+
+    Uses the ``neotoma2`` R package to retrieve all records associated with
+    *dsid*, then merges site metadata, collection-unit metadata, dataset
+    metadata, sample data, lake parameters, and geopolitical units into a
+    single deduplicated DataFrame.
+
+    Args:
+        dsid (int): Neotoma dataset ID to download.
+
+    Returns:
+        pandas.DataFrame: One row per sample × taxon combination, with
+        columns for site, collection unit, dataset, depth, geopolitical name,
+        and water-column depth (``tot_depth_water_col``).
+    """
     st_dl = neo2.get_downloads(dsid)
 
     # ==== Site Metadata ====
@@ -74,5 +86,5 @@ def get_data(dsid):
     st_samp['geo_loc_name'] = st_samp['geopoliticalname']
     st_samp = st_samp.rename(columns={'value_lk': 'tot_depth_water_col'})
     samples_df = st_samp.drop_duplicates()
-    
+
     return samples_df

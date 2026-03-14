@@ -1,11 +1,30 @@
+"""Command-line interface for the neotoma2FAIRe conversion tool.
+
+Entry point is :func:`main`, registered in ``pyproject.toml`` as
+``neotoma2faire = "neotoma2faire.cli:main"``.
+
+Usage examples::
+
+    neotoma2faire template -d 55582 -t assets/FAIRe_checklist_v1.0.2_FULLtemplate.xlsx
+    neotoma2faire template -d 55582 -o my_output.xlsx
+"""
+
 import argparse
 import neotoma2faire as ntf
 
+
 def parse_args():
-    """Parse arguments if the script is run from the commandline.
+    """Parse command-line arguments for the neotoma2FAIRe tool.
 
     Returns:
-        argparse.Namespace: A Namespace object defining the arguments passed from the commandline.
+        argparse.Namespace: Namespace with attributes:
+
+        * ``tool`` (list[str]) — sub-command to run (currently only
+          ``'template'``).
+        * ``output`` (str) — output ``.xlsx`` path (default
+          ``'template.xlsx'``).
+        * ``template`` (str) — path to the base FAIRe template workbook.
+        * ``dataset`` (int) — Neotoma dataset ID (default ``55582``).
     """
     parser = argparse.ArgumentParser(
         prog="Neotoma2FAIRe Conversion Tool",
@@ -19,7 +38,6 @@ def parse_args():
         default="template",
     )
     parser.add_argument("-o", "--output", type=str, required=False, default="template.xlsx")
-    
     parser.add_argument(
         "-t",
         "--template",
@@ -45,6 +63,7 @@ def parse_args():
 
 
 def main():
+    """Entry point: parse arguments and dispatch to the requested tool."""
     args = parse_args()
     if "template" in args.tool:
         ntf.make_template(args)
