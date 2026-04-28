@@ -1,0 +1,213 @@
+apiVersion: neotoma v2.0
+headers: 2
+kind: Development 
+metadata:
+# Constants
+- column: datasettypeid
+  neotoma: ndb.datasettypes.datasettypeid
+  required: true
+  value: Metabarcoding aeDNA
+- column: databaseid
+  neotoma: 'ndb.datasetdatabases.databasename'
+  required: true
+  value: Sedimentary aDNA Database
+
+### Sites
+- column: siteid
+  neotoma: ndb.sites.siteid
+  rowwise: false
+  type: string
+- column: sitename
+  neotoma: ndb.sites.sitename
+  rowwise: false
+  type: string
+- column: cu_notes
+  neotoma: ndb.collectionunits.notes
+  required: false
+  rowwise: false
+  type: str
+- column: handle
+  neotoma: ndb.collectionunits.collunitname
+  notes: name by author
+  overwrite: true
+  required: false
+  rowwise: false
+  type: string
+- column: handle
+  neotoma: ndb.collectionunits.handle
+  overwrite: true
+  required: false
+  rowwise: false
+  type: string
+- column: PlotDepth(cm)
+  neotoma: ndb.analysisunits.depth
+  required: false
+  rowwise: true
+  type: float
+- column: Thickness(cm)
+  neotoma: ndb.analysisunits.thickness
+  required: false
+  rowwise: true
+  type: float
+
+## Chronologies
+- column: AgeModel
+  neotoma: ndb.chronologies.agemodel
+  required: false
+  rowwise: false
+  type: string
+  chronologyname: DefaultChronology
+
+- column: AgeType
+  neotoma: ndb.chronologies.agetypeid
+  required: false
+  rowwise: false
+  type: string
+  chronologyname: DefaultChronology
+
+- column: CRS(CalendarYear)
+  neotoma: ndb.chronologies.ageboundolder
+  required: false
+  rowwise: true
+  type: float
+  chronologyname: DefaultChronology
+
+- column: CRS(CalendarYear)
+  neotoma: ndb.chronologies.ageboundyounger
+  required: false
+  rowwise: true
+  type: float
+  chronologyname: DefaultChronology
+
+
+# ── Geochronology ─────────────────────────────────────────────────────────────
+# - column: CRS(CalendarYear)
+#   neotoma: ndb.geochronology.age
+#   required: false
+#   rowwise: true
+#   type: float
+
+# - column: geochrontype
+#   neotoma: ndb.geochronology.geochrontypeid
+#   required: false
+#   rowwise: true
+#   type: string
+
+# - column: AgeType
+#   neotoma: ndb.geochronology.agetypeid
+#   required: false
+#   rowwise: true
+#   type: string
+
+## Sample Ages
+
+- column: CRS(CalendarYear)
+  neotoma: ndb.sampleages.age
+  required: false
+  rowwise: true
+  type: float
+  chronologyname: DefaultChronology
+
+- column: CRS(CalendarYear)
+  neotoma: ndb.sampleages.ageolder
+  required: false
+  rowwise: true
+  type: float
+  chronologyname: DefaultChronology
+
+- column: CRS(CalendarYear)
+  neotoma: ndb.sampleages.ageyounger
+  required: false
+  rowwise: true
+  type: float
+  chronologyname: DefaultChronology
+
+- column: AgeModel
+  neotoma: ndb.sampleages.agemodel
+  required: false
+  rowwise: false
+  type: string
+  chronologyname: DefaultChronology
+
+### Age-Depth
+- column: CRS(CalendarYear)
+  neotoma: ndb.sampleages.age
+  notes: Calendar year from 210Pb CRS model. Stored as sampleages.age under a CRS chronology; chronologyid must reference the correct CRS chronology entry.
+  required: false
+  rowwise: true
+  type: float
+- column: SampleInterval(cm)
+  neotoma: derived
+  notes: Raw depth interval string (e.g. "0-1") from the source data. Not stored directly in Neotoma — used to derive analysisunits.depth (PlotDepth) and analysisunits.thickness (Thickness).
+  required: false
+  rowwise: true
+  type: string
+
+
+### Samples
+- column: SampleName
+  neotoma: ndb.samples.samplename
+  required: false
+  rowwise: true
+  type: string
+
+# Data
+- column: ASV1
+  neotoma: ndb.data.value
+  rowwise: true
+  taxonname: Hydrurales_Clade-II_X_sp.
+  type: float
+- column: Units
+  neotoma: ndb.variables.variableunitsid
+  rowwise: true
+  taxonname: Hydrurales_Clade-II_X_sp.
+  type: str
+- column: ASV2
+  neotoma: ndb.data.value
+  rowwise: true
+  taxonname: Choricystis_minor
+  type: float
+- column: Units
+  neotoma: ndb.variables.variableunitsid
+  rowwise: true
+  taxonname: Choricystis_minor
+  type: str
+- column: ASV3
+  neotoma: ndb.data.value
+  rowwise: true
+  taxonname: Novel-clade-10_XX_sp.
+  type: float
+- column: Units
+  neotoma: ndb.variables.variableunitsid
+  rowwise: true
+  taxonname: Novel-clade-10_XX_sp.
+  type: str
+
+- column: SedimentationRate(cm-yr)
+  neotoma: ndb.data.value
+  notes: Sedimentation rate from CRS model. Stored as a data value with variable element "sedimentation rate" and units "cm/yr". Requires a corresponding ndb.variables entry.
+  required: false
+  rowwise: true
+  taxonname: Sedimentation rate
+  type: float
+- column: SedRateUnits
+  neotoma: ndb.variables.variableunitsid
+  rowwise: true
+  taxonname: Sedimentation rate
+  type: str
+
+  # - CRS(CalendarYear) needs a chronologyid
+  #  at insert time — you'll need to create
+  # (or look up) a CRS-type chronology in   
+  # ndb.chronologies for this collection
+  # unit first.      
+  # - SampleInterval(cm) is marked derived —
+  #  it's already been consumed by the      
+  # script to produce PlotDepth and
+  # Thickness, so nothing extra needs to be 
+  # stored.         
+  # - SedimentationRate(cm-yr) goes into
+  # ndb.data just like the ASV read counts, 
+  # but with a different variable (element =
+  #  "sedimentation rate", units = "cm/yr") 
+  # rather than a taxon + NISP.
