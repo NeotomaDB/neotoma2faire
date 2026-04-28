@@ -16,6 +16,7 @@ dependencies = [
     "pytz>=2023.3",
     "PyYAML>=5.3.1",
     "tqdm>=4.65.0",
+    "requests>=2.32",
     "rpy2>=3.5.0",
     "numpy>=2.4.3",
     "pandas>=3.0.1",
@@ -97,3 +98,10 @@ neotoma2faire = "neotoma2faire.cli:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.15.5",
+]
