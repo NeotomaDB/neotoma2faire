@@ -1,17 +1,32 @@
 # Python-generated files
 __pycache__/
+**/__pycache__/
 *.py[oc]
 build/
 dist/
 wheels/
-*.egg-info
+**.egg-info/
 
 # Virtual environments
 .venv
 
 # Snyk Security Extension - AI Rules (auto-generated)
 .github/instructions/snyk_rules.instructions.md
-
 .vscode/
-
 .env
+.env.production
+.env.dev
+
+.DS_Store
+uv.lock
+.coverage
+.claude
+
+# Data files
+data/*
+outputs/*
+*Okoboji*
+*.csv
+
+# Eventually Add:
+.github/workflows/release.yml
