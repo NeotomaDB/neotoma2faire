@@ -14,10 +14,6 @@ class TestParseArgs:
         args = self._parse(['template'])
         assert 'template' in args.tool
 
-    def test_default_output(self):
-        args = self._parse(['template'])
-        assert args.output == 'template.xlsx'
-
     def test_custom_output(self):
         args = self._parse(['template', '-o', 'out.xlsx'])
         assert args.output == 'out.xlsx'

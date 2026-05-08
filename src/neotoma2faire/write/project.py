@@ -11,7 +11,6 @@ occupies its own *row*, and the populated value goes in column D
 """
 
 from ..api.client import get_contact, get_dataset, get_publications
-#from ..utils import apply_query_result
 
 def add_project(workbook, datasetid: int):
     """Write project metadata for *datasetid* into the workbook.
@@ -77,22 +76,22 @@ def add_project(workbook, datasetid: int):
             "project_id": None,
         }
     ]
-    apply_query_result(project_result, term_row_map, write_project, none_placeholder="")
+    # apply_query_result(project_result, term_row_map, write_project, none_placeholder="")
 
-    # --- Publications and data-management fields ---
-    pubs = get_publications(datasetid)
-    citations = [p.get("citation") for p in pubs if p.get("citation")]
-    dois = [p.get("doi") for p in pubs if p.get("doi")]
-    associated = [f"https://doi.org/{d}" for d in dois]
+    # # --- Publications and data-management fields ---
+    # pubs = get_publications(datasetid)
+    # citations = [p.get("citation") for p in pubs if p.get("citation")]
+    # dois = [p.get("doi") for p in pubs if p.get("doi")]
+    # associated = [f"https://doi.org/{d}" for d in dois]
 
-    datamgmt_result = [
-        {
-            "license": "http://creativecommons.org/licenses/by/4.0/legalcode",
-            "bibliographicCitation": citations,
-            "associated_resource": associated,
-            "mod_date": ds.get("recdatecreated"),
-        }
-    ]
-    apply_query_result(datamgmt_result, term_row_map, write_project, none_placeholder="")
+    # datamgmt_result = [
+    #     {
+    #         "license": "http://creativecommons.org/licenses/by/4.0/legalcode",
+    #         "bibliographicCitation": citations,
+    #         "associated_resource": associated,
+    #         "mod_date": ds.get("recdatecreated"),
+    #     }
+    # ]
+    # apply_query_result(datamgmt_result, term_row_map, write_project, none_placeholder="")
 
     return workbook

@@ -62,4 +62,4 @@ def get_experiment_run(dataset_id: int) -> pd.DataFrame:
         ``pcr_primer_name_forward``, ``pcr_primer_name_reverse``,
         ``lib_layout``, ``seq_meth``.  Empty DataFrame if no records exist.
     """
-    return run_dataset_query(_QUERY, dataset_id)
+    # return run_dataset_query(_QUERY, dataset_id)

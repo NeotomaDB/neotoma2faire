@@ -49,4 +49,4 @@ def get_std_data(dataset_id: int) -> pd.DataFrame:
         ``subfragment``, ``input_quantity``, ``efficiency``, ``r_squared``.
         Empty DataFrame if no records exist.
     """
-    return run_dataset_query(_QUERY, dataset_id)
+    # return run_dataset_query(_QUERY, dataset_id)

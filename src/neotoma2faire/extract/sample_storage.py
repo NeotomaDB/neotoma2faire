@@ -77,4 +77,4 @@ def get_sample_storage(dataset_id: int) -> pd.DataFrame:
         ``samp_store_temp``, ``samp_store_dur``, ``dna_store_loc``,
         ``verbatimSRS``.  Empty DataFrame if no storage records exist.
     """
-    return run_dataset_query(_QUERY, dataset_id)
+    # return run_dataset_query(_QUERY, dataset_id)

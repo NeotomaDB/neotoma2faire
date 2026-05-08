@@ -68,4 +68,4 @@ def get_taxa_sequences(dataset_id: int, curated: bool = False) -> pd.DataFrame:
     # can be used unchanged (it only substitutes %(datasetid)s).
     curated_literal = "TRUE" if curated else "FALSE"
     query = _QUERY.replace("%(is_curated)s", curated_literal)
-    return run_dataset_query(query, dataset_id)
+    # return run_dataset_query(query, dataset_id)

@@ -50,4 +50,4 @@ def get_amp_data(dataset_id: int) -> pd.DataFrame:
         ``ct_cq``, ``copy_number``, ``detection_call``.
         Empty DataFrame if no records exist.
     """
-    return run_dataset_query(_QUERY, dataset_id)
+    ## return run_dataset_query(_QUERY, dataset_id)
