@@ -1,4 +1,4 @@
-"""Tests for neotoma2faire.neo_connect."""
+"""Tests for neotoma2faire.api.db."""
 
 from unittest.mock import MagicMock, patch
 
@@ -10,11 +10,11 @@ class TestNeoConnect:
         fake_creds = '{"host": "localhost", "dbname": "testdb"}'
         mock_conn = MagicMock()
 
-        with patch('neotoma2faire.neo_connect.dotenv_values',
+        with patch('neotoma2faire.api.db.dotenv_values',
                    return_value={'DBAUTH_TEST': fake_creds, 'DBAUTH': '{}'}), \
-             patch('neotoma2faire.neo_connect.psycopg.connect',
+             patch('neotoma2faire.api.db.psycopg.connect',
                    return_value=mock_conn) as mock_connect:
-            from neotoma2faire.neo_connect import neo_connect
+            from neotoma2faire.api.db import neo_connect
             result = neo_connect(tank=True)
 
         mock_connect.assert_called_once()
@@ -27,11 +27,11 @@ class TestNeoConnect:
         fake_creds = '{"host": "prod-host", "dbname": "proddb"}'
         mock_conn = MagicMock()
 
-        with patch('neotoma2faire.neo_connect.dotenv_values',
+        with patch('neotoma2faire.api.db.dotenv_values',
                    return_value={'DBAUTH_TEST': '{}', 'DBAUTH': fake_creds}), \
-             patch('neotoma2faire.neo_connect.psycopg.connect',
+             patch('neotoma2faire.api.db.psycopg.connect',
                    return_value=mock_conn) as mock_connect:
-            from neotoma2faire.neo_connect import neo_connect
+            from neotoma2faire.api.db import neo_connect
             result = neo_connect(tank=False)
 
         kwargs = mock_connect.call_args.kwargs
@@ -39,11 +39,11 @@ class TestNeoConnect:
         assert kwargs['dbname'] == 'proddb'
 
     def test_connect_timeout_is_five_seconds(self):
-        with patch('neotoma2faire.neo_connect.dotenv_values',
+        with patch('neotoma2faire.api.db.dotenv_values',
                    return_value={'DBAUTH_TEST': '{}', 'DBAUTH': '{}'}), \
-             patch('neotoma2faire.neo_connect.psycopg.connect',
+             patch('neotoma2faire.api.db.psycopg.connect',
                    return_value=MagicMock()) as mock_connect:
-            from neotoma2faire.neo_connect import neo_connect
+            from neotoma2faire.api.db import neo_connect
             neo_connect(tank=True)
 
         kwargs = mock_connect.call_args.kwargs
@@ -51,9 +51,9 @@ class TestNeoConnect:
 
     def test_returns_connection(self):
         mock_conn = MagicMock()
-        with patch('neotoma2faire.neo_connect.dotenv_values',
+        with patch('neotoma2faire.api.db.dotenv_values',
                    return_value={'DBAUTH_TEST': '{}', 'DBAUTH': '{}'}), \
-             patch('neotoma2faire.neo_connect.psycopg.connect',
+             patch('neotoma2faire.api.db.psycopg.connect',
                    return_value=mock_conn):
-            from neotoma2faire.neo_connect import neo_connect
+            from neotoma2faire.api.db import neo_connect
             assert neo_connect() is mock_conn

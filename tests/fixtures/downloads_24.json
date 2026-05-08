@@ -1,0 +1,30 @@
+{
+  "status": "success",
+  "data": [
+    {
+      "site": {
+        "siteid": 24,
+        "sitename": "Stub Lake",
+        "geography": "{\"type\":\"Point\",\"coordinates\":[-90.0,45.0]}",
+        "altitude": 200,
+        "geopolitical": [
+          "United States",
+          "Wisconsin"
+        ],
+        "collectionunit": {
+          "collectionunitid": 24,
+          "colldate": null,
+          "collectiondevice": null,
+          "notes": null,
+          "depositionalenvironment": "Lacustrine",
+          "defaultchronology": 1,
+          "dataset": {
+            "datasetid": 24,
+            "datasettype": "pollen",
+            "samples": []
+          }
+        }
+      }
+    }
+  ]
+}

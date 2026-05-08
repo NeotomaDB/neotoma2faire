@@ -1,8 +1,8 @@
-"""Tests for neotoma2faire.get_samples."""
+"""Tests for neotoma2faire.extract.samples_pivot."""
 
 import pandas as pd
 import pytest
-from neotoma2faire.get_samples import get_samples
+from neotoma2faire.extract.samples_pivot import get_samples
 
 
 @pytest.fixture

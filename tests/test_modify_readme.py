@@ -1,10 +1,10 @@
-"""Tests for neotoma2faire.modify_README."""
+"""Tests for neotoma2faire.write.readme."""
 
 from datetime import datetime
 from unittest.mock import MagicMock, call, patch
 
 import pytest
-from neotoma2faire.modify_README import modify_README
+from neotoma2faire.write.readme import modify_README
 
 
 @pytest.fixture
@@ -45,7 +45,7 @@ class TestModifyREADME:
     def test_writes_datetime_to_a8(self, mock_workbook):
         wb, ws = mock_workbook
         fixed = datetime(2026, 1, 1, 12, 0, 0)
-        with patch('neotoma2faire.modify_README.datetime') as mock_dt:
+        with patch('neotoma2faire.write.readme.datetime') as mock_dt:
             mock_dt.now.return_value = fixed
             modify_README(wb)
         assert ws.__setitem__.call_args_list[2] == call('A8', fixed)

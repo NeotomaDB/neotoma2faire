@@ -1,17 +1,17 @@
-"""Tests for neotoma2faire.get_taxa.
+"""Tests for neotoma2faire.extract.taxa.
 
 climb_up accepts an explicit ``taxa`` DataFrame so its tests bypass the
 module-level R-loaded default entirely.
 
 get_taxa calls climb_up internally without passing ``taxa=``, so the default
 parameter (bound at function-definition time) cannot be patched via the
-module attribute.  Instead we patch neotoma2faire.get_taxa.climb_up with a
+module attribute.  Instead we patch neotoma2faire.extract.taxa.climb_up with a
 thin wrapper that injects the test DataFrame as the ``taxa`` argument.
 """
 
 import pandas as pd
 import pytest
-from neotoma2faire.get_taxa import climb_up, get_taxa
+from neotoma2faire.extract.taxa import climb_up, get_taxa
 from unittest.mock import patch
 
 
@@ -90,45 +90,52 @@ def _climb_stub(taxa_df):
 
 
 class TestGetTaxa:
+    @pytest.fixture(autouse=True)
+    def _stub_api_fetch(self):
+        # get_taxa() calls _ensure_taxa() -> get_taxa_batch() -> live HTTP.
+        # Stub it so tests stay offline; climb_up is patched separately.
+        with patch('neotoma2faire.extract.taxa._ensure_taxa', lambda ids: None):
+            yield
+
     def test_returns_dataframe(self, taxa_df):
-        with patch('neotoma2faire.get_taxa.climb_up', _climb_stub(taxa_df)):
+        with patch('neotoma2faire.extract.taxa.climb_up', _climb_stub(taxa_df)):
             result = get_taxa([3])
         assert isinstance(result, pd.DataFrame)
 
     def test_most_specific_name_populated(self, taxa_df):
-        with patch('neotoma2faire.get_taxa.climb_up', _climb_stub(taxa_df)):
+        with patch('neotoma2faire.extract.taxa.climb_up', _climb_stub(taxa_df)):
             result = get_taxa([3])
         assert result['most_specific_name'].iloc[0] == 'Species'
 
     def test_most_specific_id_populated(self, taxa_df):
-        with patch('neotoma2faire.get_taxa.climb_up', _climb_stub(taxa_df)):
+        with patch('neotoma2faire.extract.taxa.climb_up', _climb_stub(taxa_df)):
             result = get_taxa([3])
         assert result['most_specific_id'].iloc[0] == 3
 
     def test_no_id_columns_in_output(self, taxa_df):
-        with patch('neotoma2faire.get_taxa.climb_up', _climb_stub(taxa_df)):
+        with patch('neotoma2faire.extract.taxa.climb_up', _climb_stub(taxa_df)):
             result = get_taxa([3])
         id_cols = [c for c in result.columns if c.endswith('_id') and c != 'most_specific_id']
         assert id_cols == []
 
     def test_single_int_accepted(self, taxa_df):
-        with patch('neotoma2faire.get_taxa.climb_up', _climb_stub(taxa_df)):
+        with patch('neotoma2faire.extract.taxa.climb_up', _climb_stub(taxa_df)):
             result = get_taxa(3)
         assert len(result) == 1
 
     def test_deduplication_of_ids(self, taxa_df):
         """Passing the same ID twice must produce only one row."""
-        with patch('neotoma2faire.get_taxa.climb_up', _climb_stub(taxa_df)):
+        with patch('neotoma2faire.extract.taxa.climb_up', _climb_stub(taxa_df)):
             result = get_taxa([3, 3])
         assert len(result) == 1
 
     def test_multiple_ids(self, taxa_df):
-        with patch('neotoma2faire.get_taxa.climb_up', _climb_stub(taxa_df)):
+        with patch('neotoma2faire.extract.taxa.climb_up', _climb_stub(taxa_df)):
             result = get_taxa([1, 2, 3])
         assert len(result) == 3
 
     def test_level_columns_present(self, taxa_df):
-        with patch('neotoma2faire.get_taxa.climb_up', _climb_stub(taxa_df)):
+        with patch('neotoma2faire.extract.taxa.climb_up', _climb_stub(taxa_df)):
             result = get_taxa([3])
         level_cols = [c for c in result.columns if c.startswith('level_')]
         assert len(level_cols) >= 1

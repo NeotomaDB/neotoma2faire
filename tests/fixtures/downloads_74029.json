@@ -1,0 +1,29 @@
+{
+  "_note": "Stub — refresh via: NEOTOMA_API_ENV=dev curl https://api-dev.neotomadb.org/v2.0/data/downloads/74029 > tests/fixtures/downloads_74029.json",
+  "_source_env": "dev",
+  "status": "success",
+  "data": [
+    {
+      "site": {
+        "siteid": 74029,
+        "sitename": "Stub aeDNA Lake",
+        "geography": "{\"type\":\"Point\",\"coordinates\":[-90.0,45.0]}",
+        "altitude": 200,
+        "geopolitical": ["United States", "Wisconsin"],
+        "collectionunit": {
+          "collectionunitid": 74029,
+          "colldate": null,
+          "collectiondevice": "Livingstone",
+          "notes": null,
+          "depositionalenvironment": "Lacustrine",
+          "defaultchronology": null,
+          "dataset": {
+            "datasetid": 74029,
+            "datasettype": "metabarcoding",
+            "samples": []
+          }
+        }
+      }
+    }
+  ]
+}
