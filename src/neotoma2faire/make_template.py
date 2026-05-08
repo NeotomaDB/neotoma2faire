@@ -1,52 +1,68 @@
 """Orchestrate the FAIRe template generation workflow.
 
 :func:`make_template` ties together all data-fetch and data-write steps:
-it loads the base Excel workbook, retrieves Neotoma data, pivots samples and
-taxa, merges the two tables, and writes the result to a CSV (the Excel-save
-path is prepared but commented out pending full sheet-write implementation).
+
+1. Loads the base FAIRe Excel workbook (the template).
+2. Stamps the README sheet with version and timestamp.
+3. Populates the ``projectMetadata`` sheet (PIs, institution, license, citations).
+4. Fetches all data for the requested dataset via the Neotoma REST API.
+5. Writes per-sample rows to the ``sampleMetadata`` sheet.
+6. Writes taxonomic hierarchy rows to ``taxaFinal`` and ``taxaRaw``.
+7. Writes minimal rows to ``experimentRunMetadata``.
+8. Saves the populated workbook to *args.output* — this is the only
+   deliverable.
 """
+
+from pathlib import Path
 
 from openpyxl import load_workbook
 
-from .get_data import get_data
-from .add_samples import add_samples
-from .add_taxa import add_taxa
+from .extract.data import get_data
+from .write.experiment_run import add_experiment_run
+#from .write.project import add_project
+from .write.readme import modify_README
+from .write.samples import add_samples
+from .write.taxa import add_taxa
 
 
 def make_template(args):
     """Generate a FAIRe-format template for a given Neotoma dataset.
 
-    Loads the base Excel workbook, fetches all data for *args.dataset* via
-    :func:`~.get_data.get_data`, pivots samples with
-    :func:`~.add_samples.add_samples`, builds the taxonomic hierarchy with
-    :func:`~.add_taxa.add_taxa`, merges the two DataFrames on
-    ``most_specific_id`` ↔ ``taxonid``, and writes a trial CSV.
+    Loads the base Excel workbook, fetches all data for *args.dataset* via the
+    Neotoma REST API, populates every sheet that can be filled from Neotoma,
+    and saves the workbook to *args.output*.
 
     Args:
-        args (argparse.Namespace): Parsed command-line arguments.  Expected
-            attributes:
+        args (argparse.Namespace): Parsed CLI arguments.  Expected attributes:
 
             * ``template`` (str) — path to the base FAIRe ``.xlsx`` file.
             * ``dataset`` (int) — Neotoma dataset ID to process.
-            * ``output`` (str) — destination path for the saved workbook
-              (used when the Excel-save path is re-enabled).
+            * ``output`` (str | None) — destination path for the populated
+              workbook.  When ``None`` (the default from
+              :mod:`~.cli`), the file is written to
+              ``outputs/FAIRe_DS_<datasetid>.xlsx`` so the source template at
+              ``args.template`` is never overwritten.
 
     Returns:
-        pandas.DataFrame: Merged taxa × sample DataFrame written to
-        ``trial_.csv``.
+        str: The output path that was written.
     """
+    # Default output to outputs/FAIRe_DS_<datasetid>.xlsx if not specified.
+    if not args.output:
+        args.output = f"outputs/FAIRe_DS_{args.dataset}.xlsx"
+    Path(args.output).parent.mkdir(parents=True, exist_ok=True)
+
     wb = load_workbook(filename=args.template)
 
-    # modify_README(wb)
-    # add_project(wb, args.dataset)
-    data = get_data(args.dataset)
-    smp = add_samples(wb, data)
-    tx_ids = data['taxonid'].unique().tolist()
-    tx = add_taxa(wb, tx_ids)
-    # wb.save(args.output)
+    modify_README(wb)
+    #add_project(wb, args.dataset)
 
-    # Okoboji Style
-    df = tx.merge(smp, left_on='most_specific_id', right_on='taxonid', how='left')
-    df = df.drop(columns=['taxonid', 'most_specific_id', 'most_specific_name'])
-    df.to_csv('trial_.csv', index=False)
-    return df
+    data = get_data(args.dataset)
+    add_samples(wb, data)                            # writes sampleMetadata
+
+    tx_ids = data["taxonid"].dropna().astype(int).unique().tolist()
+    add_taxa(wb, tx_ids)                             # writes taxaFinal + taxaRaw
+
+    add_experiment_run(wb, data)                     # writes experimentRunMetadata
+
+    wb.save(args.output)
+    return args.output
