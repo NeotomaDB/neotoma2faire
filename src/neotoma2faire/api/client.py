@@ -1,7 +1,7 @@
 """Wrapper around the Neotoma REST API v2.0.
 
 All functions call public, unauthenticated endpoints and return plain Python
-dicts or lists. 
+dicts or lists.
 
 Choosing an environment
 -----------------------
@@ -22,11 +22,13 @@ Examples::
 """
 
 import os
+
 import requests
 
 _ENVIRONMENTS = {
-    "prod": "https://api.neotomadb.org/v2.0/data",
-    "dev":  "https://api-dev.neotomadb.org/v2.0/data",
+    "prod":  "https://api.neotomadb.org/v2.0/data",
+    "dev":   "https://api-dev.neotomadb.org/v2.0/data",
+    "local": "http://localhost:3005/v2.0/data",
 }
 
 #: Active base URL — determined once at import time from ``NEOTOMA_API_ENV``.
@@ -154,6 +156,27 @@ def get_dataset(datasetid: int) -> dict:
     """
     body = _get(f"{BASE}/datasets/{datasetid}")
     return body["data"][0]["site"]
+
+
+def get_projects_by_dataset(datasetid: int) -> list[dict]:
+    """GET /v2.0/data/datasets/{datasetid}/projects.
+
+    Returns the projects linked to a dataset, each with a ``participants`` list
+    (``contactid``, ``contactname``, ``email``).  When the endpoint is missing
+    (e.g. talking to a prod/dev host that hasn't shipped it), the call degrades
+    to an empty list instead of raising, so the rest of the pipeline still runs.
+
+    Args:
+        datasetid (int): Neotoma dataset ID.
+
+    Returns:
+        list[dict]: One dict per project, or ``[]`` when none / unavailable.
+    """
+    try:
+        body = _get(f"{BASE}/datasets/{datasetid}/projects")
+    except requests.HTTPError:
+        return []
+    return (body.get("data") or {}).get("projects", [])
 
 
 def get_contact(contactid: int) -> dict:

@@ -19,7 +19,7 @@ from openpyxl import load_workbook
 
 from .extract.data import get_data
 from .write.experiment_run import add_experiment_run
-#from .write.project import add_project
+from .write.project import add_project
 from .write.readme import modify_README
 from .write.samples import add_samples
 from .write.taxa import add_taxa
@@ -54,15 +54,20 @@ def make_template(args):
     wb = load_workbook(filename=args.template)
 
     modify_README(wb)
-    #add_project(wb, args.dataset)
+    add_project(wb, args.dataset)
 
     data = get_data(args.dataset)
-    add_samples(wb, data)                            # writes sampleMetadata
+    add_samples(wb, data) # sample metaData ; missing storage_df= keyword
 
     tx_ids = data["taxonid"].dropna().astype(int).unique().tolist()
-    add_taxa(wb, tx_ids)                             # writes taxaFinal + taxaRaw
+    add_taxa(wb, tx_ids) # writes taxaFinal + taxaRaw; missing dataset_id= keyword
 
     add_experiment_run(wb, data)                     # writes experimentRunMetadata
+    # add_amp_data(wb, args.dataset)
+    # add_std_data(wb, args.dataset)
+    # add_elow_quant(wb, args.dataset)
+    # add_dropdown_values(wb)
+    # otu pivot returned by add_samples is discarded ← no CSV written
 
     wb.save(args.output)
     return args.output

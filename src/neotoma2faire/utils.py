@@ -42,7 +42,7 @@ def write_sheet_rows(ws, df, header_row: int) -> None:
         df (pandas.DataFrame): Rows to write.
         header_row (int): 1-based row index of the column-name header in *ws*.
     """
-    import pandas as pd  # local import to keep rpy2-free modules importable
+    import pandas as pd 
 
     header = {cell.value: cell.column for cell in ws[header_row]}
     for row_idx, row_dict in enumerate(df.to_dict(orient="records"), start=header_row + 1):

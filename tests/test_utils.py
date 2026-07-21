@@ -1,7 +1,5 @@
 """Tests for neotoma2faire.utils (formatting helpers only).
 
-The rpy2-dependent helpers (_r_to_df, _r_subset) are thin pass-throughs to
-rpy2 and are covered implicitly by the get_data / get_taxa tests via mocking.
 """
 
 import pytest

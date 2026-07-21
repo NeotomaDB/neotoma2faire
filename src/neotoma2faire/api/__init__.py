@@ -7,14 +7,17 @@ from .client import (
     get_contact,
     get_dataset,
     get_downloads,
+    get_projects_by_dataset,
     get_publications,
     get_site,
     get_taxa_batch,
 )
+
 __all__ = [
     "get_contact",
     "get_dataset",
     "get_downloads",
+    "get_projects_by_dataset",
     "get_publications",
     "get_site",
     "get_taxa_batch",

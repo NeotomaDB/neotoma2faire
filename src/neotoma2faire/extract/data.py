@@ -8,8 +8,37 @@ flattens it into one tidy DataFrame ready for downstream processing.
 """
 
 import json
+
 import pandas as pd
+
 from ..api.client import get_downloads
+
+
+def _point_from_geometry(geo: dict) -> tuple[float | None, float | None]:
+    """Return a representative ``(lon, lat)`` for any GeoJSON geometry.
+
+    A ``Point`` yields its own coordinate; any nested geometry (``Polygon``,
+    ``MultiPoint``, …) yields the centroid of every coordinate pair found, so
+    sites recorded as bounding boxes still export a usable location instead of
+    crashing.  Returns ``(None, None)`` when no coordinate pair is present.
+    """
+    pairs: list[tuple[float, float]] = []
+
+    def walk(node):
+        if (isinstance(node, (list, tuple)) and len(node) >= 2
+                and all(isinstance(n, (int, float)) for n in node[:2])):
+            pairs.append((node[0], node[1]))
+        elif isinstance(node, (list, tuple)):
+            for child in node:
+                walk(child)
+
+    walk(geo.get("coordinates"))
+    if not pairs:
+        return None, None
+    uniq = list(dict.fromkeys(pairs))  # drop the repeated closing vertex of rings
+    lon = sum(p[0] for p in uniq) / len(uniq)
+    lat = sum(p[1] for p in uniq) / len(uniq)
+    return lon, lat
 
 
 def get_data(dsid: int) -> pd.DataFrame:
@@ -57,9 +86,9 @@ def get_data(dsid: int) -> pd.DataFrame:
     dataset = cu["dataset"]
     samples = dataset.get("samples", [])
 
-    # Parse GeoJSON geography string
-    geo = json.loads(site["geography"])
-    lon, lat = geo["coordinates"][0], geo["coordinates"][1]
+    # Parse GeoJSON geography string (Point, Polygon bbox, etc.)
+    geo = json.loads(site["geography"]) if site.get("geography") else {}
+    lon, lat = _point_from_geometry(geo)
     geo_str = ", ".join(site.get("geopolitical") or [])
 
     default_chron_id = cu.get("defaultchronology")

@@ -2,6 +2,7 @@
 
 import pandas as pd
 import pytest
+
 from neotoma2faire.extract.samples_pivot import get_samples
 
 
@@ -45,15 +46,29 @@ class TestGetSamples:
         assert row['sample_2'] == 3.0
         assert row['sample_3'] == 7.0
 
-    def test_deduplication(self):
-        """Duplicate rows in input should be collapsed to one."""
+    def test_repeated_rows_preserved_not_merged(self):
+        """Identical (taxonid, sampleid, value) repeats are kept as separate rows."""
         df = pd.DataFrame({
             'sampleid': [1, 1],
             'taxonid':  [10, 10],
             'value':    [5.0, 5.0],
         })
         result = get_samples(df)
-        assert len(result) == 1
+        assert len(result) == 2
+        assert list(result['taxonid']) == [10, 10]
+        assert list(result['sample_1']) == [5.0, 5.0]
+
+    def test_repeated_taxon_rows_kept_not_summed(self):
+        """Several ASVs mapped to one taxon in a sample stay as separate rows."""
+        df = pd.DataFrame({
+            'sampleid': [1, 1, 2],
+            'taxonid':  [10, 10, 10],
+            'value':    [5.0, 3.0, 4.0],
+        })
+        result = get_samples(df)
+        assert len(result) == 2  # two occurrences for taxon 10 in sample 1
+        assert set(result['taxonid']) == {10}
+        assert sorted(result['sample_1'].dropna()) == [3.0, 5.0]  # not summed to 8.0
 
     def test_extra_columns_ignored(self, long_df):
         """Columns beyond sampleid/taxonid/value must not affect output."""
