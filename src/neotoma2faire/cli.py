@@ -91,7 +91,7 @@ def parse_args():
         "-v",
         "--version",
         action="version",
-        version="%(prog)s 1.0",
+        version="%(prog)s 1.0.0",
         help="Show the program's version number and exit.",
     )
     return parser.parse_args()

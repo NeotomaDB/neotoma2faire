@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from openpyxl import Workbook
 
-from neotoma2faire.write.readme import modify_README
+from neotoma2faire.write.readme import _VERSION, modify_README
 
 
 @pytest.fixture
@@ -24,7 +24,7 @@ class TestModifyREADME:
         # A2 answers A1's "checklist version of;" prompt, so the tool stamp
         # goes on A3 rather than overwriting it.
         modify_README(workbook)
-        assert workbook["README"]["A3"].value == "Modified by: Neotoma2FAIRe v0.1.0"
+        assert workbook["README"]["A3"].value == f"Modified by: Neotoma2FAIRe v{_VERSION}"
 
     def test_writes_the_checklist_version_into_a2(self, workbook):
         modify_README(workbook, "1.0.2")
