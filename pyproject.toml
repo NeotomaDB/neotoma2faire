@@ -1,6 +1,6 @@
 [project]
 name = "neotoma2faire"
-version = "0.1.0"
+version = "1.0.0"
 description = "Convert sites from the Neotoma DataBase to the faire format"
 readme = "README.md"
 authors = [

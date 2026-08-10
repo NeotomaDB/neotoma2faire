@@ -6,7 +6,7 @@ downloaded FAIRe workbook carries its own provenance.
 
 from datetime import datetime
 
-_VERSION = "0.1.0"
+_VERSION = "1.0.0"
 
 
 def modify_README(workbook, checklist_version: str | None = None):
