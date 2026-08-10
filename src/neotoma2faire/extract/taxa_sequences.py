@@ -1,71 +1,64 @@
-"""Fetch ASV/sequence records from the imagined ndb.aednasequences table.
+"""Fetch the DNA sequences recorded for a dataset, one row per sequence.
 
-FAIRe ``taxaRaw`` and ``taxaFinal`` carry sequence-level taxonomy assignments
-for each ASV or OTU: the assigned scientific name, match identity (pident),
-query coverage (qcovs), reference database, and the raw sequence itself.
-None of these fields exist in the current Neotoma schema; this module queries
-the imagined table that will hold them:
+``ndb.sequences`` and ``ndb.aednamodels`` are in production, and the REST API
+exposes them at ``/v2.0/data/aedna/sequences/{datasetid}`` (grouped by taxon).
+This module flattens that nested response into a tidy DataFrame — one row per
+(taxon × sequence) — which is what the FAIRe ``finalReads`` sheet needs.
 
-* ``ndb.aednasequences`` — one row per ASV/OTU × library, with a boolean
-  ``is_curated`` flag that separates raw assignments (``taxaRaw``) from
-  curated, publication-quality assignments (``taxaFinal``).
+The sequence and its ASV label are what keep same-named taxa apart: two taxa
+can share a name, and even an ASV label, while differing only by their DNA
+sequence, so neither the name nor the ASV alone is a usable key.
 
-The two FAIRe sheets are populated by passing ``curated=False`` and
-``curated=True`` respectively to :func:`get_taxa_sequences`.
+Not yet available from the API: a per-datum link (``ndb.sequencedata``) tying
+an individual read count to one specific sequence, and any curation flag that
+would separate ``taxaRaw`` from ``taxaFinal``.
 """
 
 import pandas as pd
 
-##from ..utils import run_dataset_query
+from ..api.client import get_aedna_sequences
 
-_QUERY = """
-    SELECT
-        seq.seq_id,
-        seq.asv_sequence,
-        seq.taxonid,
-        seq.pident,
-        seq.qcovs,
-        seq.reference_db,
-        seq.reference_sequence,
-        seq.is_curated,
-        lib.lib_id,
-        lib.sampleid
-    FROM ndb.aednasequences AS seq
-    JOIN ndb.aednalibraries AS lib
-        ON lib.libraryid = seq.libraryid
-    JOIN ndb.aednaassays AS aa
-        ON aa.assayid = lib.assayid
-    WHERE aa.datasetid = %(datasetid)s
-      AND seq.is_curated = %(is_curated)s
-    ORDER BY seq.sequenceid
-"""
+#: Columns of the returned DataFrame, in order.
+SEQUENCE_COLUMNS = [
+    "taxonid",
+    "taxonname",
+    "sequenceid",
+    "sequence",
+    "asv",
+    "model",
+    "primername",
+    "publicationdoi",
+]
 
 
-def get_taxa_sequences(dataset_id: int, curated: bool = False) -> pd.DataFrame:
-    """Fetch ASV/OTU sequence records for *dataset_id*.
+def get_taxa_sequences(dataset_id: int) -> pd.DataFrame:
+    """Return one row per (taxon × DNA sequence) for *dataset_id*.
 
-    Queries ``ndb.aednasequences`` joined to ``ndb.aednalibraries`` and
-    ``ndb.aednaassays``.  The ``curated`` flag selects between raw (uncurated)
-    and final (curated) sequence assignments, corresponding to FAIRe
-    ``taxaRaw`` and ``taxaFinal`` respectively.
-
-    Returns an empty DataFrame when the imagined tables have not yet been
-    populated, so callers can safely check :attr:`~pandas.DataFrame.empty`.
+    Calls :func:`~.api.client.get_aedna_sequences` and flattens the per-taxon
+    ``sequences`` lists.  Datasets with no sequence records (every non-aeDNA
+    dataset) yield an empty DataFrame, so callers can guard with
+    :attr:`~pandas.DataFrame.empty`.
 
     Args:
         dataset_id (int): Neotoma dataset ID.
-        curated (bool): When ``False`` (default), returns uncurated records
-            for ``taxaRaw``.  When ``True``, returns curated records for
-            ``taxaFinal``.
 
     Returns:
-        pandas.DataFrame: Columns: ``seq_id``, ``asv_sequence``, ``taxonid``,
-        ``pident``, ``qcovs``, ``reference_db``, ``reference_sequence``,
-        ``is_curated``, ``lib_id``, ``sampleid``.
-        Empty DataFrame if no records exist.
+        pandas.DataFrame: Columns ``taxonid``, ``taxonname``, ``sequenceid``,
+        ``sequence``, ``asv``, ``model``, ``primername``, ``publicationdoi``.
     """
-    # Build a query with the is_curated literal embedded so run_dataset_query
-    # can be used unchanged (it only substitutes %(datasetid)s).
-    curated_literal = "TRUE" if curated else "FALSE"
-    query = _QUERY.replace("%(is_curated)s", curated_literal)
-    # return run_dataset_query(query, dataset_id)
+    rows = []
+    for taxon in get_aedna_sequences(dataset_id):
+        for seq in taxon.get("sequences") or []:
+            rows.append(
+                {
+                    "taxonid": taxon.get("taxonid"),
+                    "taxonname": taxon.get("taxonname"),
+                    "sequenceid": seq.get("sequenceid"),
+                    "sequence": seq.get("sequence"),
+                    "asv": seq.get("asv"),
+                    "model": seq.get("model"),
+                    "primername": seq.get("primername"),
+                    "publicationdoi": seq.get("publicationdoi"),
+                }
+            )
+    return pd.DataFrame(rows, columns=SEQUENCE_COLUMNS)

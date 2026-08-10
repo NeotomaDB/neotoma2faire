@@ -158,13 +158,35 @@ def get_dataset(datasetid: int) -> dict:
     return body["data"][0]["site"]
 
 
+def _get_optional(url: str, key: str) -> list[dict]:
+    """GET an endpoint that a given host may not serve, degrading to ``[]``.
+
+    Several endpoints exist on some Neotoma hosts and not others, because the
+    data has landed in the database ahead of the route.  A host that has not
+    shipped one answers either with an HTTP error or — less helpfully — with an
+    HTML error page under a 200, so both a failed status and an unparseable
+    body mean "not available here".  Returning ``[]`` keeps the export running:
+    a dataset with nothing to report simply leaves those sheets blank.
+
+    Args:
+        url (str): Full URL to request.
+        key (str): Key to read out of the response's ``data`` object.
+
+    Returns:
+        list[dict]: The requested list, or ``[]`` when unavailable.
+    """
+    try:
+        body = _get(url)
+    except (requests.HTTPError, ValueError):
+        return []
+    return (body.get("data") or {}).get(key, [])
+
+
 def get_projects_by_dataset(datasetid: int) -> list[dict]:
     """GET /v2.0/data/datasets/{datasetid}/projects.
 
     Returns the projects linked to a dataset, each with a ``participants`` list
-    (``contactid``, ``contactname``, ``email``).  When the endpoint is missing
-    (e.g. talking to a prod/dev host that hasn't shipped it), the call degrades
-    to an empty list instead of raising, so the rest of the pipeline still runs.
+    (``contactid``, ``contactname``, ``email``).
 
     Args:
         datasetid (int): Neotoma dataset ID.
@@ -172,11 +194,50 @@ def get_projects_by_dataset(datasetid: int) -> list[dict]:
     Returns:
         list[dict]: One dict per project, or ``[]`` when none / unavailable.
     """
-    try:
-        body = _get(f"{BASE}/datasets/{datasetid}/projects")
-    except requests.HTTPError:
-        return []
-    return (body.get("data") or {}).get("projects", [])
+    return _get_optional(f"{BASE}/datasets/{datasetid}/projects", "projects")
+
+
+def get_assays_by_dataset(datasetid: int) -> list[dict]:
+    """GET /v2.0/data/datasets/{datasetid}/assays.
+
+    Returns the aeDNA assays linked to a dataset, each with a ``libraries`` list
+    and an ``assaytype`` label.  Assay fields (``assayname``, ``targetgene``,
+    ``pcrprimerforward``/``reverse``, …) feed the FAIRe ``projectMetadata`` PCR
+    block; library fields (``platform``, ``instrument``, ``libid``, …) feed
+    ``projectMetadata`` sequencing terms and ``experimentRunMetadata``.
+
+    Args:
+        datasetid (int): Neotoma dataset ID.
+
+    Returns:
+        list[dict]: One dict per assay, or ``[]`` when none / unavailable.
+    """
+    return _get_optional(f"{BASE}/datasets/{datasetid}/assays", "assays")
+
+
+def get_aedna_sequences(datasetid: int) -> list[dict]:
+    """GET /v2.0/data/aedna/sequences/{datasetid}.
+
+    Returns the DNA sequences recorded for a dataset, grouped by taxon.  Each
+    entry has ``taxonid``, ``taxonname``, ``taxonchain`` and a ``sequences``
+    list whose members carry ``sequenceid``, ``sequence``, ``asv``, ``model``,
+    ``primername`` and ``publicationdoi``.
+
+    Named for the endpoint rather than the sheet: the tidy-DataFrame view used
+    by the writers lives in
+    :func:`~.extract.taxa_sequences.get_taxa_sequences`, which calls this.
+
+    The sequence and ASV are what keep same-named taxa apart in the FAIRe
+    ``finalReads`` sheet: two taxa can share a name — and even an ASV label —
+    while differing only by their DNA sequence.
+
+    Args:
+        datasetid (int): Neotoma dataset ID.
+
+    Returns:
+        list[dict]: One dict per taxon, or ``[]`` when none / unavailable.
+    """
+    return _get_optional(f"{BASE}/aedna/sequences/{datasetid}", "sequences")
 
 
 def get_contact(contactid: int) -> dict:

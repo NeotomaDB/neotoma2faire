@@ -7,8 +7,11 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
+import requests
 
 from neotoma2faire.api.client import (
+    get_aedna_sequences,
+    get_assays_by_dataset,
     get_contact,
     get_dataset,
     get_downloads,
@@ -157,3 +160,64 @@ class TestGetContact:
         with patch("neotoma2faire.api.client.requests.get", return_value=_mock_response({"data": []})):
             result = get_contact(999)
         assert result == {}
+
+
+# ---------------------------------------------------------------------------
+# get_assays_by_dataset
+# ---------------------------------------------------------------------------
+
+class TestGetAssaysByDataset:
+    _payload = {
+        "status": "success",
+        "data": {
+            "datasetid": 74655,
+            "assays": [
+                {"assayname": "18SrRNAV7", "assaytype": "metabarcoding",
+                 "libraries": [{"platform": "ILLUMINA", "instrument": "Miseq"}]}
+            ],
+        },
+    }
+
+    def test_returns_assay_list(self):
+        with patch("neotoma2faire.api.client.requests.get", return_value=_mock_response(self._payload)):
+            result = get_assays_by_dataset(74655)
+        assert result[0]["assayname"] == "18SrRNAV7"
+        assert result[0]["libraries"][0]["platform"] == "ILLUMINA"
+
+    def test_missing_endpoint_returns_empty_list(self):
+        failing = MagicMock()
+        failing.raise_for_status.side_effect = requests.HTTPError("404")
+        with patch("neotoma2faire.api.client.requests.get", return_value=failing):
+            assert get_assays_by_dataset(1) == []
+
+
+class TestGetAednaSequences:
+    _payload = {
+        "status": "success",
+        "data": {
+            "datasetid": 74655,
+            "sequences": [
+                {
+                    "taxonid": 69612,
+                    "taxonname": "Hydrurales_Clade-II_X_sp.",
+                    "sequences": [
+                        {"sequenceid": 12, "sequence": "GGGGAAACT", "asv": "ASV1",
+                         "model": "DADA2", "primername": None, "publicationdoi": None}
+                    ],
+                }
+            ],
+        },
+    }
+
+    def test_returns_sequence_list(self):
+        with patch("neotoma2faire.api.client.requests.get",
+                   return_value=_mock_response(self._payload)):
+            result = get_aedna_sequences(74655)
+        assert result[0]["taxonid"] == 69612
+        assert result[0]["sequences"][0]["asv"] == "ASV1"
+
+    def test_missing_endpoint_returns_empty_list(self):
+        failing = MagicMock()
+        failing.raise_for_status.side_effect = requests.HTTPError("404")
+        with patch("neotoma2faire.api.client.requests.get", return_value=failing):
+            assert get_aedna_sequences(1) == []

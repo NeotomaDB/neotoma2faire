@@ -1,30 +1,36 @@
-"""Stamp the README sheet with the tool version and current timestamp.
+"""Stamp the README sheet with the tool name and generation timestamp.
 
-Called as part of the template-generation workflow to record when and by
-which version of neotoma2FAIRe the workbook was last modified.
+Records who generated the workbook (neotoma2FAIRe + version) and when, so a
+downloaded FAIRe workbook carries its own provenance.
 """
 
 from datetime import datetime
 
+_VERSION = "0.1.0"
 
-def modify_README(workbook):
-    """Insert version and timestamp rows into the README sheet.
 
-    Inserts two new rows after row 2 of the ``README`` sheet and writes the
-    tool name/version and the current datetime.
+def modify_README(workbook, checklist_version: str | None = None):
+    """Write the checklist version, "Modified by" and generation time into README.
+
+    A1 reads "The templates were generated using the FAIR eDNA checklist
+    version of;" and A2 is that prompt's answer slot — blank in the pristine
+    template — so the checklist version goes there and the tool stamp goes on
+    the following line.
 
     Args:
-        workbook (openpyxl.Workbook): Workbook whose ``README`` sheet will
-            be updated.  The sheet must already exist.
+        workbook (openpyxl.Workbook): Workbook whose ``README`` sheet will be
+            updated.  The sheet must already exist.
+        checklist_version (str | None): FAIRe checklist version the workbook was
+            built from, from :func:`~.utils.checklist_version`.  When ``None``,
+            A2 is left as the template had it.
 
     Returns:
         openpyxl.Workbook: The same workbook with the README sheet updated.
     """
-    ws = workbook.active = workbook['README']
-
-    ws.insert_rows(3, 2)
-    ws['A4'] = 'Modified by:'
-    ws['A5'] = 'neotoma2FAIRe v0.1.0'
-    ws.insert_rows(6, 1)
-    ws['A8'] = datetime.now()
+    ws = workbook["README"]
+    if checklist_version is not None:
+        ws["A2"] = checklist_version
+    ws["A3"] = f"Modified by: Neotoma2FAIRe v{_VERSION}"
+    ws["A4"] = "Date/Time generated:"
+    ws["B4"] = datetime.now()
     return workbook

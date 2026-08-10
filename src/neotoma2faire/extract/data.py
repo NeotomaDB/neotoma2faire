@@ -8,6 +8,7 @@ flattens it into one tidy DataFrame ready for downstream processing.
 """
 
 import json
+from collections import Counter
 
 import pandas as pd
 
@@ -39,6 +40,107 @@ def _point_from_geometry(geo: dict) -> tuple[float | None, float | None]:
     lon = sum(p[0] for p in uniq) / len(uniq)
     lat = sum(p[1] for p in uniq) / len(uniq)
     return lon, lat
+
+
+def _chronology_records(cu: dict) -> list[dict]:
+    """Flatten the collection unit's chronologies into a list of records.
+
+    Each record is ``chronologyid`` plus the metadata (``agemodel``,
+    ``modelagetype``, ``chronologyname``, …) that the API nests one level
+    deeper.
+    """
+    records = []
+    for entry in cu.get("chronologies") or []:
+        record = entry.get("chronology") or {}
+        meta = record.get("chronology") or {}
+        if record.get("chronologyid") is not None or meta:
+            records.append({"chronologyid": record.get("chronologyid"), **meta})
+    return records
+
+
+def _cited_chronology_ids(samples: list[dict]) -> Counter:
+    """Count how many samples report an age under each chronology ID."""
+    return Counter(
+        age_entry.get("chronologyid")
+        for sample in samples
+        for age_entry in sample.get("ages") or []
+        if age_entry.get("chronologyid") is not None
+    )
+
+
+def _pick_chronology(cu: dict, samples: list[dict] | None = None) -> dict:
+    """Return the chronology whose ages are reported as *the* ages of a sample.
+
+    Tries, in order: the collection unit's ``defaultchronology``; a chronology
+    flagged ``isdefault``; the chronology the samples themselves most often
+    cite; and finally the first chronology present.
+
+    The samples-cite-it step matters because a collection unit can carry
+    several chronologies with ``defaultchronology`` unset and no ``isdefault``
+    flag on any of them (West Okoboji, dataset 74666, has four).  Picking the
+    first one there would name a chronology that no sample actually uses, and
+    every age would then be filed under a suffixed column and silently miss
+    the plain ``age`` column that :mod:`~.age_models` reads.
+
+    Returns ``{}`` when the unit has no chronology at all, so callers get
+    ``None`` for every field.
+
+    Args:
+        cu (dict): The API's collection-unit record.
+        samples (list[dict] | None): The unit's samples, used to break ties by
+            what the ages actually reference.  Optional so existing callers
+            that only have *cu* keep working.
+
+    Returns:
+        dict: The chosen chronology record, or ``{}``.
+    """
+    records = _chronology_records(cu)
+    if not records:
+        return {}
+
+    by_id = {r.get("chronologyid"): r for r in records}
+
+    default_id = cu.get("defaultchronology")
+    if default_id is not None and default_id in by_id:
+        return by_id[default_id]
+
+    for record in records:
+        if record.get("isdefault"):
+            return record
+
+    for chron_id, _ in _cited_chronology_ids(samples or []).most_common():
+        if chron_id in by_id:
+            return by_id[chron_id]
+
+    return records[0]
+
+
+def _chronology_suffixes(records: list[dict]) -> dict:
+    """Map each chronology ID to a unique, column-safe name suffix.
+
+    Chronology names are not unique — West Okoboji has four chronologies all
+    named ``DefaultChronology`` — so a name-only suffix would make several
+    chronologies overwrite each other in one set of columns.  Duplicated names
+    are disambiguated by appending the chronology ID.
+    """
+    names = Counter(r.get("chronologyname") for r in records)
+    suffixes = {}
+    for record in records:
+        chron_id = record.get("chronologyid")
+        name = record.get("chronologyname")
+        if not name:
+            suffix = str(chron_id)
+        elif names[name] > 1:
+            suffix = f"{name}_{chron_id}"
+        else:
+            suffix = name
+        suffixes[chron_id] = _safe_suffix(suffix)
+    return suffixes
+
+
+def _safe_suffix(raw: str) -> str:
+    """Make *raw* safe to embed in a column name."""
+    return str(raw).replace(" ", "_").replace("/", "_").replace("\\", "_")
 
 
 def get_data(dsid: int) -> pd.DataFrame:
@@ -91,7 +193,9 @@ def get_data(dsid: int) -> pd.DataFrame:
     lon, lat = _point_from_geometry(geo)
     geo_str = ", ".join(site.get("geopolitical") or [])
 
-    default_chron_id = cu.get("defaultchronology")
+    chronology = _pick_chronology(cu, samples)
+    default_chron_id = chronology.get("chronologyid")
+    suffixes = _chronology_suffixes(_chronology_records(cu))
 
     rows = []
     for sample in samples:
@@ -110,6 +214,9 @@ def get_data(dsid: int) -> pd.DataFrame:
             "samp_collect_device": cu.get("collectiondevice"),
             "samp_collect_method": cu.get("notes"),
             "env_medium": cu.get("depositionalenvironment"),
+            # chronology (collection-unit level; per-sample ages are added below)
+            "agemodel": chronology.get("agemodel"),
+            "modelagetype": chronology.get("modelagetype"),
             # dataset
             "datasetid": dataset.get("datasetid"),
             "datasettype": dataset.get("datasettype"),
@@ -118,6 +225,9 @@ def get_data(dsid: int) -> pd.DataFrame:
             "samp_name": sample.get("samplename"),
             "analysisunitid": sample.get("analysisunitid"),
             "sample_derived_from": sample.get("analysisunitid"),
+            "analysisunitname": sample.get("analysisunitname"),
+            "depth": sample.get("depth"),
+            "thickness": sample.get("thickness"),
             "minimumDepthInMeters": sample.get("depth"),
             "maximumDepthInMeters": sample.get("depth"),
             "materialSampleID": sample.get("igsn"),
@@ -138,8 +248,9 @@ def get_data(dsid: int) -> pd.DataFrame:
                 base["ageYoungest"] = age_entry.get("ageyounger")
                 base["ageUnit"] = age_entry.get("agetype")
             else:
-                raw = age_entry.get("chronologyname") or str(chron_id)
-                suffix = raw.replace(" ", "_").replace("/", "_").replace("\\", "_")
+                suffix = suffixes.get(chron_id) or _safe_suffix(
+                    age_entry.get("chronologyname") or chron_id
+                )
                 base[f"age_{suffix}"] = age_entry.get("age")
                 base[f"ageOldest_{suffix}"] = age_entry.get("ageolder")
                 base[f"ageYoungest_{suffix}"] = age_entry.get("ageyounger")

@@ -4,9 +4,16 @@ FAIRe's ``sampleMetadata`` sheet requires one row per sample, with each column
 holding a metadata field.  :func:`get_data` returns one row per
 (sample × taxon), so this module deduplicates on ``sampleid`` and keeps only
 the columns that correspond to FAIRe ``sampleMetadata`` terms.
+
+Chronology deliberately does not appear here: ages, age models and
+sedimentation rates all live in the ``ageModels`` sheet
+(:mod:`~.extract.age_models`), so a sample's identity and its dating stay in
+separate tables.
 """
 
 import pandas as pd
+
+from ..utils import sort_samples
 
 # FAIRe sampleMetadata columns that can be populated from Neotoma via the API.
 # Columns are listed in roughly the order they appear in the FAIRe template.
@@ -28,11 +35,6 @@ _SAMPLE_COLS = [
     "samp_mat_process",   # FAIRe: samp_mat_process
     "sample_derived_from",   # FAIRe: sample_derived_from  (analysisunitid)
     "env_medium",         # FAIRe: env_medium
-    # Ages — default chronology maps to standard FAIRe columns
-    "age",                # FAIRe: age
-    "ageOldest",          # FAIRe: ageOldest
-    "ageYoungest",        # FAIRe: ageYoungest
-    "ageUnit",            # FAIRe: ageUnit  (e.g. "Calibrated radiocarbon years BP")
     # Internal context columns kept for traceability
     "siteid",
     "sitename",
@@ -40,13 +42,6 @@ _SAMPLE_COLS = [
     "datasetid",
     "datasettype",
 ]
-
-# Standard FAIRe age column names (default chronology).
-_AGE_COLS = {"age", "ageOldest", "ageYoungest", "ageUnit"}
-
-# Prefixes used by get_data() for non-default chronology age columns.
-_EXTRA_AGE_PREFIXES = ("age_", "ageOldest_", "ageYoungest_", "ageUnit_")
-
 
 def get_sample_metadata(df: pd.DataFrame) -> pd.DataFrame:
     """Produce one row per sample with FAIRe ``sampleMetadata`` column names.
@@ -59,18 +54,19 @@ def get_sample_metadata(df: pd.DataFrame) -> pd.DataFrame:
     rather than raising an error, so the function degrades gracefully when
     optional fields are absent.
 
+    Rows come back in the order every sheet uses: shallowest first, samples
+    with no recorded depth last, ties broken by natural name order (see
+    :func:`~.utils.sort_samples`).
+
     Args:
         df (pandas.DataFrame): Long-format DataFrame from
             :func:`~.get_data.get_data`.
 
     Returns:
         pandas.DataFrame: One row per unique ``sampleid``, containing only the
-        FAIRe ``sampleMetadata`` columns that are available in *df*.
+        FAIRe ``sampleMetadata`` columns that are available in *df*, ordered
+        by depth then sample name.
     """
     available = [c for c in _SAMPLE_COLS if c in df.columns]
-    # Append columns for non-default chronologies in the order they appear in df.
-    extra = [
-        c for c in df.columns
-        if c.startswith(_EXTRA_AGE_PREFIXES) and c not in available
-    ]
-    return df[available + extra].drop_duplicates(subset=["sampleid"]).reset_index(drop=True)
+    samples = df[available].drop_duplicates(subset=["sampleid"])
+    return sort_samples(samples)

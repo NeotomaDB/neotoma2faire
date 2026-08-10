@@ -78,3 +78,6 @@ def get_sample_storage(dataset_id: int) -> pd.DataFrame:
         ``verbatimSRS``.  Empty DataFrame if no storage records exist.
     """
     # return run_dataset_query(_QUERY, dataset_id)
+    # The table this queries does not exist yet; return an empty frame so
+    # callers can guard with .empty instead of tripping over None.
+    return pd.DataFrame()
