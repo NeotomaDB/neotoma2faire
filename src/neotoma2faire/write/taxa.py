@@ -19,6 +19,7 @@ Why not :func:`~.extract.taxa.get_taxa` / ``climb_up`` here?
 import pandas as pd
 
 from ..api.client import get_taxa_batch
+from ..extract.taxa_sequences import get_taxa_sequences
 from ..utils import write_sheet_rows
 
 
@@ -36,14 +37,20 @@ def add_taxa(
         txid (int | list[int]): One or more Neotoma taxon IDs.
         header_row (int): 1-based row index of the column-name header in both
             taxa sheets.  Defaults to ``3``.
-        dataset_id (int | None): Currently unused; kept in the signature for
-            forward compatibility with a future hierarchy/sequence writer.
+        dataset_id (int | None): When supplied, the dataset's DNA sequences are
+            fetched via :func:`~.extract.taxa_sequences.get_taxa_sequences` and
+            merged in, filling ``dna_sequence`` and ``seq_id``.  A taxon with
+            several sequences yields one row per sequence, because the sequence
+            — not the name — is what makes the row identifiable.  When ``None``,
+            or when the dataset has no sequences on record, the frame is
+            unchanged and those columns stay blank.
 
     Returns:
-        pandas.DataFrame: One row per unique taxon ID with columns
-        ``scientificName``, ``taxonID``, ``taxonID_db``,
-        ``verbatimIdentification``, plus the duplicate ``most_specific_id`` /
-        ``most_specific_name`` aliases used by the OTU merge in
+        pandas.DataFrame: One row per unique taxon ID (or per taxon × sequence
+        when *dataset_id* supplies sequences) with columns ``scientificName``,
+        ``taxonID``, ``taxonID_db``, ``verbatimIdentification``, optionally
+        ``dna_sequence`` and ``seq_id``, plus the duplicate ``most_specific_id``
+        / ``most_specific_name`` aliases used by the OTU merge in
         :func:`~.make_template.make_template`.
     """
     if isinstance(txid, int):
@@ -59,6 +66,25 @@ def add_taxa(
             "verbatimIdentification": [t.get("taxonname") for t in taxa],
         }
     )
+    # DNA sequences, when the caller names the dataset they belong to.
+    # ndb.sequences carries no curation flag, so taxaRaw and taxaFinal still
+    # receive the same rows.
+    if dataset_id is not None:
+        sequences = get_taxa_sequences(dataset_id)
+        if not sequences.empty:
+            sequences = sequences[["taxonid", "sequence", "sequenceid"]].rename(
+                columns={
+                    "taxonid": "taxonID",
+                    "sequence": "dna_sequence",
+                    "sequenceid": "seq_id",
+                }
+            )
+            # The API returns IDs as strings in places; align both sides so the
+            # merge matches instead of silently producing all-blank sequences.
+            sequences["taxonID"] = pd.to_numeric(sequences["taxonID"], errors="coerce")
+            df["taxonID"] = pd.to_numeric(df["taxonID"], errors="coerce")
+            df = df.merge(sequences, on="taxonID", how="left")
+
     # Aliases consumed by make_template's OTU merge.  Keeping them here means
     # that pipeline keeps working without a hierarchy walk.
     df["most_specific_id"]   = df["taxonID"]

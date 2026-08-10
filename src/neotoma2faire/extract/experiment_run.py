@@ -63,3 +63,6 @@ def get_experiment_run(dataset_id: int) -> pd.DataFrame:
         ``lib_layout``, ``seq_meth``.  Empty DataFrame if no records exist.
     """
     # return run_dataset_query(_QUERY, dataset_id)
+    # The table this queries does not exist yet; return an empty frame so
+    # callers can guard with .empty instead of tripping over None.
+    return pd.DataFrame()

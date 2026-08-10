@@ -1,0 +1,21 @@
+coverage:
+  status:
+    project:
+      default:
+        # Overall coverage may not drop by more than the threshold.
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        # New and modified lines in a PR must be 80% covered.
+        target: 80%
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false
+
+ignore:
+  - "tests/**"
+  - "tutorials/**"
+  - "outputs/**"

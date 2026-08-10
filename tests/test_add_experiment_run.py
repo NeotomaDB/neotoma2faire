@@ -80,3 +80,46 @@ class TestAddExperimentRun:
             if any(v is not None for v in r)
         ]
         assert len(filled_rows) == 2
+
+    def test_assay_name_from_assay(self, minimal_workbook, sample_df):
+        """When an assay is supplied, assay_name comes from assayname, not datasettype."""
+        assays = [{"assayname": "18SrRNAV7",
+                   "libraries": [{"libid": "L1", "seqrunid": "R1", "pcrplateid": "P1"}]}]
+        add_experiment_run(minimal_workbook, sample_df, assays)
+        ws = minimal_workbook["experimentRunMetadata"]
+        # assay_name col 2; lib fields cols 3-5 (pcr_plate_id, lib_id, seq_run_id)
+        assert ws.cell(row=4, column=2).value == "18SrRNAV7"
+        assert ws.cell(row=4, column=3).value == "P1"
+        assert ws.cell(row=4, column=4).value == "L1"
+        assert ws.cell(row=4, column=5).value == "R1"
+
+
+class TestExperimentRunOrdering:
+    """Rows follow the same depth-then-name order as the other sheets."""
+
+    @pytest.fixture
+    def scrambled_df(self):
+        return pd.DataFrame({
+            "sampleid":             [1, 2, 3, 4],
+            "samp_name":            ["WLO50", "WLO49", "WLO10", "WLO9"],
+            "datasettype":          ["metabarcoding"] * 4,
+            "minimumDepthInMeters": [None, 32.5, 10.0, 9.0],
+        })
+
+    def test_rows_come_out_shallowest_first_with_depthless_last(
+        self, minimal_workbook, scrambled_df
+    ):
+        add_experiment_run(minimal_workbook, scrambled_df)
+        ws = minimal_workbook["experimentRunMetadata"]
+        names = [ws.cell(row=r, column=1).value for r in range(4, 8)]
+        assert names == ["WLO9", "WLO10", "WLO49", "WLO50"]
+
+    def test_the_ordering_column_is_not_written_to_the_sheet(
+        self, minimal_workbook, scrambled_df
+    ):
+        # minimumDepthInMeters is carried only to sort by; it is not a
+        # experimentRunMetadata term and must not leak into the sheet.
+        add_experiment_run(minimal_workbook, scrambled_df)
+        ws = minimal_workbook["experimentRunMetadata"]
+        headers = [ws.cell(row=3, column=c).value for c in range(1, ws.max_column + 1)]
+        assert "minimumDepthInMeters" not in headers

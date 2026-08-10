@@ -9,7 +9,9 @@
 5. Writes per-sample rows to the ``sampleMetadata`` sheet.
 6. Writes taxonomic hierarchy rows to ``taxaFinal`` and ``taxaRaw``.
 7. Writes minimal rows to ``experimentRunMetadata``.
-8. Saves the populated workbook to *args.output* — this is the only
+8. Creates and fills the two non-FAIRe sheets, ``ageModels`` and
+   ``finalReads``.
+9. Saves the populated workbook to *args.output* — this is the only
    deliverable.
 """
 
@@ -17,9 +19,13 @@ from pathlib import Path
 
 from openpyxl import load_workbook
 
+from .api.client import get_assays_by_dataset
 from .extract.data import get_data
+from .utils import checklist_version
+from .write.age_models import add_age_models
 from .write.experiment_run import add_experiment_run
-#from .write.project import add_project
+from .write.final_reads import add_final_reads
+from .write.project import add_project
 from .write.readme import modify_README
 from .write.samples import add_samples
 from .write.taxa import add_taxa
@@ -53,16 +59,33 @@ def make_template(args):
 
     wb = load_workbook(filename=args.template)
 
-    modify_README(wb)
-    #add_project(wb, args.dataset)
+    # Read once from the template filename so upgrading the template updates
+    # both the README stamp and the checkls_ver term.
+    version = checklist_version(args.template)
+
+    modify_README(wb, version)
+    add_project(wb, args.dataset, checklist_version=version)
 
     data = get_data(args.dataset)
-    add_samples(wb, data)                            # writes sampleMetadata
+    add_samples(wb, data) # sample metaData ; missing storage_df= keyword
 
-    tx_ids = data["taxonid"].dropna().astype(int).unique().tolist()
-    add_taxa(wb, tx_ids)                             # writes taxaFinal + taxaRaw
+    # Neotoma files lab measurements (sedimentation rate, LOI, …) as taxa in
+    # ndb.data.  They are not organisms, so they are kept out of the taxa
+    # sheets; the sedimentation rate is reported in ageModels instead.
+    biological = data[data.get("taxongroup") != "Laboratory analyses"]
+    tx_ids = biological["taxonid"].dropna().astype(int).unique().tolist()
+    add_taxa(wb, tx_ids, dataset_id=args.dataset)  # writes taxaFinal + taxaRaw
 
-    add_experiment_run(wb, data)                     # writes experimentRunMetadata
+    assays = get_assays_by_dataset(args.dataset)
+    add_experiment_run(wb, data, assays)             # writes experimentRunMetadata
+
+    # Sheets beyond the FAIRe checklist: the age-depth model and the read
+    # counts per sequenced taxon.  Both are created, not filled in.
+    add_age_models(wb, data)
+    add_final_reads(wb, data, args.dataset)
+    # add_amp_data(wb, args.dataset)
+    # add_std_data(wb, args.dataset)
+    # add_elow_quant(wb, args.dataset)
 
     wb.save(args.output)
     return args.output

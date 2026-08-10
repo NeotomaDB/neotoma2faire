@@ -71,11 +71,12 @@ def parse_args():
         "-e",
         "--env",
         default=None,
-        choices=["prod", "dev"],
+        choices=["prod", "dev", "local"],
         help=(
             "Which Neotoma API environment to hit. Defaults to NEOTOMA_API_ENV "
-            "if set, otherwise 'prod'. Use 'dev' to talk to api-dev.neotomadb.org "
-            "while testing endpoints that haven't shipped to production yet."
+            "if set, otherwise 'prod'. Use 'dev' to talk to api-dev.neotomadb.org, "
+            "or 'local' to talk to a local API server on localhost:3005 while "
+            "testing endpoints that haven't shipped to production yet."
         ),
     )
     parser.add_argument(
@@ -106,7 +107,7 @@ def main():
     load_env(use_dev=args.dev)
 
     # Explicit --env wins over --dev; otherwise --dev forces the dev API URL.
-    if getattr(args, "env", None) in ("prod", "dev"):
+    if getattr(args, "env", None) in ("prod", "dev", "local"):
         from neotoma2faire.api.client import use_environment
         use_environment(args.env)
     elif args.dev:

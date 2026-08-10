@@ -30,3 +30,8 @@ outputs/*
 
 # Eventually Add:
 .github/workflows/release.yml
+
+/docs
+.github/
+codecov.yml
+wakeup.sh

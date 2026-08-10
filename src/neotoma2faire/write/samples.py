@@ -18,36 +18,9 @@
 
 import pandas as pd
 
-from ..extract.sample_metadata import _AGE_COLS, _EXTRA_AGE_PREFIXES, get_sample_metadata
+from ..extract.sample_metadata import get_sample_metadata
 from ..extract.samples_pivot import get_samples
 from ..utils import write_sheet_rows
-
-
-def _append_age_columns(ws, df: pd.DataFrame, header_row: int) -> None:
-    """Append age columns that are absent from the sheet header.
-
-    Finds all age-related columns in *df* that do not already appear in
-    *ws* row *header_row*, writes their names into the next available columns,
-    then delegates data writing to :func:`~.utils.write_sheet_rows`.
-
-    Args:
-        ws: An openpyxl ``Worksheet`` (the ``sampleMetadata`` sheet).
-        df (pandas.DataFrame): Per-sample metadata DataFrame.
-        header_row (int): 1-based row index of the column-name header in *ws*.
-    """
-    existing = {cell.value for cell in ws[header_row] if cell.value is not None}
-    extra = [
-        c for c in df.columns
-        if c not in existing and (c in _AGE_COLS or c.startswith(_EXTRA_AGE_PREFIXES))
-    ]
-    if not extra:
-        return
-
-    last_col = max(cell.column for cell in ws[header_row] if cell.value is not None)
-    for offset, col_name in enumerate(extra, start=1):
-        ws.cell(row=header_row, column=last_col + offset, value=col_name)
-
-    write_sheet_rows(ws, df[extra], header_row)
 
 
 def add_samples(
@@ -91,5 +64,4 @@ def add_samples(
         meta = meta.merge(storage_df, on="sampleid", how="left")
 
     write_sheet_rows(wb["sampleMetadata"], meta, header_row)
-    _append_age_columns(wb["sampleMetadata"], meta, header_row)
     return get_samples(df)

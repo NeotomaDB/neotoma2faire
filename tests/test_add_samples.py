@@ -1,84 +1,61 @@
-"""Tests for neotoma2faire.write.samples._append_age_columns."""
+"""Tests for neotoma2faire.write.samples.add_samples.
 
-import pandas as pd
+Chronology moved out of ``sampleMetadata`` and into the ``ageModels`` sheet, so
+these tests pin down that the sheet stays free of age columns.
+"""
+
 import openpyxl
+import pandas as pd
 import pytest
 
-from neotoma2faire.write.samples import _append_age_columns
+from neotoma2faire.write.samples import add_samples
+
+HEADER_ROW = 3
 
 
-def _make_ws(headers: list[str], header_row: int = 3) -> openpyxl.worksheet.worksheet.Worksheet:
-    """Return a worksheet with *headers* written into *header_row*."""
+def _make_wb(headers: list[str]) -> openpyxl.Workbook:
+    """Return a workbook with a ``sampleMetadata`` sheet headed by *headers*."""
     wb = openpyxl.Workbook()
     ws = wb.active
+    ws.title = "sampleMetadata"
     for col_idx, name in enumerate(headers, start=1):
-        ws.cell(row=header_row, column=col_idx, value=name)
-    return ws
+        ws.cell(row=HEADER_ROW, column=col_idx, value=name)
+    return wb
 
 
 @pytest.fixture
-def meta_default():
-    """One-row-per-sample DataFrame with default-chronology age columns."""
+def long_df():
+    """Long-format get_data() frame: two samples × two taxa, with ages."""
     return pd.DataFrame({
-        "samp_name": ["S1", "S2"],
-        "age": [131.7, 500.0],
-        "ageOldest": [150.0, 520.0],
-        "ageYoungest": [110.0, 480.0],
-        "ageUnit": ["Calibrated radiocarbon years BP", "Calibrated radiocarbon years BP"],
+        "sampleid": [1, 1, 2, 2],
+        "samp_name": ["S1", "S1", "S2", "S2"],
+        "taxonid": [10, 11, 10, 11],
+        "value": [5, 6, 7, 8],
+        "minimumDepthInMeters": [0.5, 0.5, 1.5, 1.5],
+        "age": [131.7, 131.7, 500.0, 500.0],
+        "ageUnit": ["Calendar years BP"] * 4,
+        "agemodel": ["CRS"] * 4,
     })
 
 
-@pytest.fixture
-def meta_multi():
-    """One-row-per-sample DataFrame with default + extra-chronology age columns."""
-    return pd.DataFrame({
-        "samp_name": ["S1", "S2"],
-        "age": [131.7, 500.0],
-        "ageOldest": [150.0, 520.0],
-        "ageYoungest": [110.0, 480.0],
-        "ageUnit": ["Calibrated radiocarbon years BP", "Calibrated radiocarbon years BP"],
-        "age_Varve_model": [120.0, 490.0],
-        "ageOldest_Varve_model": [135.0, 505.0],
-        "ageYoungest_Varve_model": [105.0, 475.0],
-        "ageUnit_Varve_model": ["Varve years BP", "Varve years BP"],
-    })
+class TestAddSamples:
+    def test_one_row_per_sample(self, long_df):
+        wb = _make_wb(["samp_name", "minimumDepthInMeters"])
+        add_samples(wb, long_df, header_row=HEADER_ROW)
+        ws = wb["sampleMetadata"]
+        assert [ws.cell(row=r, column=1).value for r in (4, 5)] == ["S1", "S2"]
+        assert ws.cell(row=6, column=1).value is None
 
+    def test_age_columns_not_appended(self, long_df):
+        """Ages belong to ageModels; sampleMetadata must not grow age columns."""
+        wb = _make_wb(["samp_name", "minimumDepthInMeters"])
+        add_samples(wb, long_df, header_row=HEADER_ROW)
+        ws = wb["sampleMetadata"]
+        headers = [c.value for c in ws[HEADER_ROW] if c.value is not None]
+        assert headers == ["samp_name", "minimumDepthInMeters"]
 
-class TestAppendAgeColumns:
-    def test_age_headers_appended(self, meta_default):
-        ws = _make_ws(["samp_name"])
-        _append_age_columns(ws, meta_default, header_row=3)
-        headers = [ws.cell(row=3, column=c).value for c in range(1, 6)]
-        assert "age" in headers
-        assert "ageOldest" in headers
-        assert "ageYoungest" in headers
-        assert "ageUnit" in headers
-
-    def test_age_data_written(self, meta_default):
-        ws = _make_ws(["samp_name"])
-        _append_age_columns(ws, meta_default, header_row=3)
-        headers = {ws.cell(row=3, column=c).value: c for c in range(1, 10) if ws.cell(row=3, column=c).value}
-        assert ws.cell(row=4, column=headers["age"]).value == 131.7
-        assert ws.cell(row=5, column=headers["age"]).value == 500.0
-
-    def test_no_duplicate_headers(self, meta_default):
-        """If age columns already exist in the sheet, they must not be added again."""
-        ws = _make_ws(["samp_name", "age", "ageOldest", "ageYoungest", "ageUnit"])
-        _append_age_columns(ws, meta_default, header_row=3)
-        headers = [ws.cell(row=3, column=c).value for c in range(1, 10) if ws.cell(row=3, column=c).value]
-        assert headers.count("age") == 1
-
-    def test_extra_chron_headers_appended(self, meta_multi):
-        ws = _make_ws(["samp_name"])
-        _append_age_columns(ws, meta_multi, header_row=3)
-        headers = {ws.cell(row=3, column=c).value for c in range(1, 15) if ws.cell(row=3, column=c).value}
-        assert "age_Varve_model" in headers
-        assert "ageUnit_Varve_model" in headers
-
-    def test_no_age_columns_no_change(self):
-        """When df has no age columns, the sheet header must be unchanged."""
-        df = pd.DataFrame({"samp_name": ["S1"]})
-        ws = _make_ws(["samp_name"])
-        _append_age_columns(ws, df, header_row=3)
-        headers = [ws.cell(row=3, column=c).value for c in range(1, 5)]
-        assert headers == ["samp_name", None, None, None]
+    def test_returns_otu_pivot(self, long_df):
+        wb = _make_wb(["samp_name"])
+        pivot = add_samples(wb, long_df, header_row=HEADER_ROW)
+        assert list(pivot.columns) == ["taxonid", "sample_1", "sample_2"]
+        assert len(pivot) == 2
