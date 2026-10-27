@@ -7,8 +7,6 @@ authors:
 - family-names: "Goring"
   given-names: "Simon"
   orcid: "https://orcid.org/0000-0002-2700-4605"
-title: "neotoma2: An R package to access data from the Neotoma Paleoecology Database"
-version: 1.0.3
-doi: 10.5281/zenodo.7892992
-date-released: 2023-11-16
-url: "https://github.com/NeotomaDB/neotoma2"
+title: "neotoma2faire"
+version: 1.0.0
+url: "https://github.com/NeotomaDB/neotoma2faire/"
